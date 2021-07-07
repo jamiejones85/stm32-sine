@@ -28,6 +28,7 @@
 #include "terminal.h"
 #include "sine_core.h"
 #include "fu.h"
+#include "foc.h"
 #include "hwdefs.h"
 #include "hwinit.h"
 #include "params.h"
@@ -126,7 +127,7 @@ static void Ms10Task(void)
 
    if (MOD_RUN == opmode && initWait == -1)
    {
-      PwmGeneration::SetTorquePercent(FP_FROMFLT(torquePercent));
+      PwmGeneration::SetTorquePercent(torquePercent);
    }
    else if ((MOD_BOOST == opmode || MOD_BUCK == opmode) && initWait == -1)
    {

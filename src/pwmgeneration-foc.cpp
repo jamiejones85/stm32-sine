@@ -127,18 +127,20 @@ void PwmGeneration::Run()
    }
 }
 
-void PwmGeneration::SetTorquePercent(s32fp torquePercent)
+void PwmGeneration::SetTorquePercent(float torquePercent)
 {
-   static int32_t heatCurRamped = 0;
-   s32fp brkrampstr = Param::Get(Param::brkrampstr);
+   //static int32_t heatCurRamped = 0;
+   float brkrampstr = Param::GetFloat(Param::brkrampstr);
+   float fstat = (float)frq;
    int direction = Param::GetInt(Param::dir);
    int heatCur = Param::GetInt(Param::heatcur);
 
    heatCur = MIN(400, heatCur);
+   frq /= FRAC_FAC;
 
-   if (frq < brkrampstr && torquePercent < 0)
+   if (fstat < brkrampstr && torquePercent < 0)
    {
-      torquePercent = FP_MUL(FP_DIV(frq, brkrampstr), torquePercent);
+      torquePercent = fstat / brkrampstr * torquePercent;
    }
 
    if (torquePercent < 0)
@@ -146,34 +148,9 @@ void PwmGeneration::SetTorquePercent(s32fp torquePercent)
       direction = Encoder::GetRotorDirection();
    }
 
-   int32_t is = FP_TOINT(FP_MUL(Param::Get(Param::throtcur), direction * torquePercent));
-   int32_t id, iq;
-
-   if (heatCur > 0 && torquePercent < FP_FROMINT(30))
-   {
-      int speed = Param::GetInt(Param::speed);
-
-      if (speed == 0 && torquePercent <= 0)
-      {
-         iq = 0;
-         heatCurRamped = RAMPUP(heatCurRamped, heatCur, 10);
-         id = heatCurRamped;
-      }
-      /*else if (torquePercent > 0)
-      {
-         id = FP_TOINT((-heatCur * torquePercent) / 30);
-      }*/
-      else
-      {
-         FOC::Mtpa(is, id, iq);
-         heatCurRamped = 0;
-      }
-   }
-   else
-   {
-      FOC::Mtpa(is, id, iq);
-      heatCurRamped = 0;
-   }
+   int32_t iq = Param::GetFloat(Param::throtiq) * direction * torquePercent;
+   int32_t id = Param::GetFloat(Param::throtid) * torquePercent;
+   id = -ABS(id);
 
    qController.SetRef(FP_FROMINT(iq));
    fwController.SetRef(FP_FROMINT(iq));
@@ -204,7 +181,7 @@ void PwmGeneration::PwmInit()
    dController.SetMinMaxY(-maxVd, maxVd / 2);
    fwController.ResetIntegrator();
    fwController.SetCallingFrequency(pwmfrq);
-   fwController.SetMinMaxY(-50 * Param::Get(Param::throtcur), 0); //allow 50% of max current for extra field weakening
+   fwController.SetMinMaxY(50 * Param::Get(Param::throtid), 0); //allow 50% of max current for extra field weakening
 
    if ((Param::GetInt(Param::pinswap) & SWAP_PWM13) > 0)
    {
